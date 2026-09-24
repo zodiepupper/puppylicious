@@ -45,10 +45,14 @@ import { onPressInvite } from '../components/invite';
 import { useAppTheme } from '../app-theme/app-theme';
 import { useIsWebLoggedOut } from '../events/signed-in-user';
 import { encodedAnonymousAnswers } from '../events/anonymous-answers';
-import { consumeStaleSearchResults } from '../events/stale-search-results';
+import {
+  consumeStaleSearchResults,
+  listenStaleSearchResults,
+} from '../events/stale-search-results';
 import { flushSearchFilterWrites } from '../events/search-filters';
 import { SearchFiltersHint } from './hints/search-filters-hint';
 import { seenSearchFiltersHint } from '../kv-storage/seen-hints/seen-search-filters-hint';
+import { useHasRightPane } from './navigation/web-layout';
 
 type SearchScreenProps = CompositeScreenProps<
   NativeStackScreenProps<SearchParamList, 'Search Screen'>,
@@ -549,6 +553,7 @@ const ListHeaderComponent = ({
 
 const SearchScreen_ = ({navigation}: SearchScreenProps) => {
   const isPublic = useIsWebLoggedOut();
+  const hasFilterPanel = useHasRightPane() && !isPublic;
 
   const {
     hasClubs: initialHasClubs,
@@ -622,6 +627,14 @@ const SearchScreen_ = ({navigation}: SearchScreenProps) => {
       return () => { active = false; };
     }, [onPressRefresh])
   );
+
+  useEffect(() => {
+    return listenStaleSearchResults(() => {
+      if (navigation.isFocused() && consumeStaleSearchResults()) {
+        onPressRefresh();
+      }
+    });
+  }, [navigation, onPressRefresh]);
 
   const onPressOptions = useCallback(() => {
     dismissFiltersHint();
@@ -710,18 +723,20 @@ const SearchScreen_ = ({navigation}: SearchScreenProps) => {
               label="Invite"
             />
           }
-          <View>
-            <TopNavBarButton
-              onPress={onPressOptions}
-              iconName="options-outline"
-              position={null}
-              secondary={false}
-              label="Filters"
-            />
-            {!isFiltersHintDismissed && !isPublic &&
-              <SearchFiltersHint onDismiss={dismissFiltersHint} />
-            }
-          </View>
+          {!hasFilterPanel &&
+            <View>
+              <TopNavBarButton
+                onPress={onPressOptions}
+                iconName="options-outline"
+                position={null}
+                secondary={false}
+                label="Filters"
+              />
+              {!isFiltersHintDismissed && !isPublic &&
+                <SearchFiltersHint onDismiss={dismissFiltersHint} />
+              }
+            </View>
+          }
         </View>
       </DuoliciousTopNavBar>
       {width !== null && <DefaultFlatList

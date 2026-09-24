@@ -143,6 +143,66 @@ const getCurrentValueAsLabel = (
 const optionGroupToDataKey = (og: OptionGroup<OptionGroupInputs>) =>
   og.title.toLowerCase().replaceAll(' ', '_');
 
+const withCurrentValue = (
+  og: OptionGroup<OptionGroupInputs>,
+  data: SearchFilters | undefined,
+  signedInUser: SignedInUser | undefined,
+): OptionGroup<OptionGroupInputs> => {
+  const value = data?.[optionGroupToDataKey(og)];
+  const isImperial = signedInUser?.units === 'Imperial';
+
+  if (isOptionGroupCheckChips(og.input)) {
+    const checked: string[] = Array.isArray(value) ? value : [];
+    return _.merge({}, og, { input: { checkChips: {
+      values: og.input.checkChips.values.map((v) => ({
+        ...v,
+        checked: checked.includes(v.label),
+      })),
+    } } });
+  }
+  if (og.title === 'Furthest Distance' && isOptionGroupSlider(og.input)) {
+    const distanceMaxKm = distanceSliderMaxKm(signedInUser?.units);
+    const normalizedValue = normalizeMaxDistanceKm(
+      value,
+      signedInUser?.units,
+    );
+    const currentValue =
+      isImperial && typeof normalizedValue === 'number' ?
+      Math.min(normalizedValue, distanceMaxKm) :
+      normalizedValue;
+
+    return _.merge({}, og, { input: { slider: {
+      currentValue,
+      sliderMax: isImperial ? distanceMaxKm : og.input.slider.sliderMax,
+      defaultValue: isImperial ? distanceMaxKm : og.input.slider.defaultValue,
+      unitsLabel: isImperial ? "mi." : 'km',
+      valueRewriter: isImperial ? (km: number) => distanceValueText(km, 'Imperial') : undefined,
+      toggle: { currentValue: data?.same_country_only === true },
+    } } });
+  }
+  if (og.title === 'Age' && isOptionGroupRangeSlider(og.input)) {
+    const ageValue: { min_age?: unknown; max_age?: unknown } =
+      value && typeof value === 'object' ? value : {};
+    return _.merge({}, og, { input: { rangeSlider: {
+      currentMin: ageValue.min_age,
+      currentMax: ageValue.max_age,
+    } } });
+  }
+  if (og.title === 'Height' && isOptionGroupRangeSlider(og.input)) {
+    const heightValue: { min_height_cm?: unknown; max_height_cm?: unknown } =
+      value && typeof value === 'object' ? value : {};
+    return _.merge({}, og, { input: { rangeSlider: {
+      currentMin: heightValue.min_height_cm,
+      currentMax: heightValue.max_height_cm,
+      unitsLabel: isImperial ? "ft'in\"" : 'cm',
+      valueRewriter: isImperial ? cmToFeetInchesStr : undefined,
+    } } });
+  }
+  if (value === undefined) return og;
+  const inputKey = Object.keys(og.input)[0];
+  return _.merge({}, og, { input: { [inputKey]: { currentValue: value } } });
+};
+
 type AnswerItem = SearchFilterAnswer;
 
 const fetchQuestionSearch = async (q: string): Promise<AnswerItem[]> => {
@@ -255,64 +315,6 @@ const SearchFilterScreen_ = ({navigation}: NativeStackScreenProps<SearchFilterPa
     />;
   }, [navigation, isLocked, promptSignUp]);
 
-  const withCurrent = (
-    og: OptionGroup<OptionGroupInputs>,
-  ): OptionGroup<OptionGroupInputs> => {
-    const value = data?.[optionGroupToDataKey(og)];
-    const isImperial = signedInUser?.units === 'Imperial';
-
-    if (isOptionGroupCheckChips(og.input)) {
-      const checked: string[] = Array.isArray(value) ? value : [];
-      return _.merge({}, og, { input: { checkChips: {
-        values: og.input.checkChips.values.map((v) => ({
-          ...v,
-          checked: checked.includes(v.label),
-        })),
-      } } });
-    }
-    if (og.title === 'Furthest Distance' && isOptionGroupSlider(og.input)) {
-      const distanceMaxKm = distanceSliderMaxKm(signedInUser?.units);
-      const normalizedValue = normalizeMaxDistanceKm(
-        value,
-        signedInUser?.units,
-      );
-      const currentValue =
-        isImperial && typeof normalizedValue === 'number' ?
-        Math.min(normalizedValue, distanceMaxKm) :
-        normalizedValue;
-
-      return _.merge({}, og, { input: { slider: {
-        currentValue,
-        sliderMax: isImperial ? distanceMaxKm : og.input.slider.sliderMax,
-        defaultValue: isImperial ? distanceMaxKm : og.input.slider.defaultValue,
-        unitsLabel: isImperial ? "mi." : 'km',
-        valueRewriter: isImperial ? (km: number) => distanceValueText(km, 'Imperial') : undefined,
-        toggle: { currentValue: data?.same_country_only === true },
-      } } });
-    }
-    if (og.title === 'Age' && isOptionGroupRangeSlider(og.input)) {
-      const ageValue: { min_age?: unknown; max_age?: unknown } =
-        value && typeof value === 'object' ? value : {};
-      return _.merge({}, og, { input: { rangeSlider: {
-        currentMin: ageValue.min_age,
-        currentMax: ageValue.max_age,
-      } } });
-    }
-    if (og.title === 'Height' && isOptionGroupRangeSlider(og.input)) {
-      const heightValue: { min_height_cm?: unknown; max_height_cm?: unknown } =
-        value && typeof value === 'object' ? value : {};
-      return _.merge({}, og, { input: { rangeSlider: {
-        currentMin: heightValue.min_height_cm,
-        currentMax: heightValue.max_height_cm,
-        unitsLabel: isImperial ? "ft'in\"" : 'cm',
-        valueRewriter: isImperial ? cmToFeetInchesStr : undefined,
-      } } });
-    }
-    if (value === undefined) return og;
-    const inputKey = Object.keys(og.input)[0];
-    return _.merge({}, og, { input: { [inputKey]: { currentValue: value } } });
-  };
-
   useEffect(() => {
     if (isLocked) {
       setSearchFilters(defaultSearchFilters());
@@ -325,6 +327,9 @@ const SearchFilterScreen_ = ({navigation}: NativeStackScreenProps<SearchFilterPa
       }
     })();
   }, [isLocked]);
+
+  const withCurrent = (og: OptionGroup<OptionGroupInputs>) =>
+    withCurrentValue(og, data, signedInUser);
 
   const _searchBasicsOptionGroups = searchBasicsOptionGroups.map(withCurrent);
   const _searchOtherBasicsOptionGroups = searchOtherBasicsOptionGroups.map(withCurrent);
@@ -826,4 +831,6 @@ const styles = StyleSheet.create({
 
 export {
   SearchFilterScreen,
+  optionGroupToDataKey,
+  withCurrentValue,
 }

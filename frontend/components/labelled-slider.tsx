@@ -38,7 +38,7 @@ type Props = {
   style?: ViewStyle,
   addPlusAtMax: boolean | undefined
   valueRewriter?: (x: number) => number | string
-  onSlidingComplete?: (value: number) => void
+  onSlidingComplete?: () => void
   scale?: Partial<Scale>
   step: number
 };
@@ -47,6 +47,7 @@ const LabelledSlider = forwardRef(({label, minimumValue, maximumValue, ...rest}:
   const {
     initialValue,
     onValueChange,
+    onSlidingComplete,
     style,
     addPlusAtMax,
     valueRewriter = (x) => x,
@@ -124,6 +125,7 @@ const LabelledSlider = forwardRef(({label, minimumValue, maximumValue, ...rest}:
         maximumValue={descaleValue(maximumValue, minimumValue, maximumValue)}
         initialValue={descaledInitialValue}
         onValueChange={_onValueChange}
+        onSlidingComplete={onSlidingComplete}
       />
       <Label ref={labelRef} />
     </View>

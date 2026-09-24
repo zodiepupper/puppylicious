@@ -2,6 +2,7 @@ import {
   useRef,
   useEffect,
   useMemo,
+  useState,
   forwardRef,
   useImperativeHandle,
 } from 'react';
@@ -24,6 +25,7 @@ interface SliderProps {
   minimumValue: number;
   maximumValue: number;
   onValueChange: (value: number) => void;
+  onSlidingComplete?: () => void;
 }
 
 export interface SliderHandle {
@@ -32,7 +34,14 @@ export interface SliderHandle {
 
 const Slider = forwardRef<SliderHandle, SliderProps>((props, ref) => {
   const { appTheme } = useAppTheme();
-  const { initialValue, minimumValue, maximumValue, onValueChange } = props;
+  const {
+    initialValue,
+    minimumValue,
+    maximumValue,
+    onValueChange,
+    onSlidingComplete,
+  } = props;
+  const [isLaidOut, setIsLaidOut] = useState(false);
 
   const panX = useRef(new Animated.Value(0)).current;
   const panXValue = useRef(0); // Keep track of the current value
@@ -85,8 +94,9 @@ const Slider = forwardRef<SliderHandle, SliderProps>((props, ref) => {
         let newPanX = gestureStartX.current + e.translationX;
         newPanX = Math.max(0, Math.min(newPanX, sliderWidth.current));
         panX.setValue(newPanX);
-      }),
-    [panX],
+      })
+      .onEnd(() => onSlidingComplete?.()),
+    [panX, onSlidingComplete],
   );
 
   useImperativeHandle(ref, () => ({
@@ -129,6 +139,7 @@ const Slider = forwardRef<SliderHandle, SliderProps>((props, ref) => {
     const position = calculatePosition(valueRef.current);
     panX.setValue(position);
     panXValue.current = position;
+    setIsLaidOut(true);
   };
 
   return (
@@ -146,6 +157,7 @@ const Slider = forwardRef<SliderHandle, SliderProps>((props, ref) => {
           style={[
             styles.thumb,
             {
+              opacity: isLaidOut ? 1 : 0,
               transform: [{ translateX: panX }],
             },
           ]}

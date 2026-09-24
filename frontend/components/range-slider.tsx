@@ -23,6 +23,7 @@ type RangeSliderProps = {
   unitsLabel?: string,
   onLowerValueChange: (value: number) => void,
   onUpperValueChange: (value: number) => void,
+  onSlidingComplete?: () => void,
   initialLowerValue: number | null,
   initialUpperValue: number | null,
   valueRewriter?: (x: number) => number | string,
@@ -37,6 +38,7 @@ const RangeSlider = forwardRef((props: RangeSliderProps, ref) => {
     unitsLabel,
     onLowerValueChange,
     onUpperValueChange,
+    onSlidingComplete,
     initialLowerValue,
     initialUpperValue,
     valueRewriter,
@@ -85,6 +87,7 @@ const RangeSlider = forwardRef((props: RangeSliderProps, ref) => {
         ref={lowerRef}
         initialValue={initialLowerValue}
         onValueChange={_onLowerValueChange}
+        onSlidingComplete={onSlidingComplete}
         label={"Min" + (unitsLabel ? ` (${unitsLabel})` : '')}
         minimumValue={minimumValue}
         maximumValue={maximumValue}
@@ -97,6 +100,7 @@ const RangeSlider = forwardRef((props: RangeSliderProps, ref) => {
         ref={upperRef}
         initialValue={initialUpperValue}
         onValueChange={_onUpperValueChange}
+        onSlidingComplete={onSlidingComplete}
         label={"Max" + (unitsLabel ? ` (${unitsLabel})` : '')}
         minimumValue={minimumValue}
         maximumValue={maximumValue}

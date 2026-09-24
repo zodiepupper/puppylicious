@@ -42,6 +42,7 @@ import { VerificationCameraModal } from './components/verification-camera';
 import { PointOfSaleModal } from './components/modal/point-of-sale-modal';
 import { DateOfBirthConfirmationModal } from './components/modal/date-of-birth-confirmation-modal';
 import { SignUpModal } from './components/modal/sign-up-modal';
+import { SearchFiltersModal } from './components/modal/search-filters-modal';
 import { SignUpBanner } from './components/sign-up-banner';
 import { useAppThemeLoader, useAppTheme } from './app-theme/app-theme';
 import { useAppStartup } from './app-startup/app-startup';
@@ -183,6 +184,7 @@ const App = () => {
             <Toast/>
             <PointOfSaleModal/>
             <SignUpModal/>
+            <SearchFiltersModal/>
             <VerificationCameraModal/>
             <DateOfBirthConfirmationModal/>
             </KeyboardProvider>
