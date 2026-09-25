@@ -12,18 +12,20 @@ const RIGHT_PANE_STYLE: ViewStyle = { flex: 1 };
 const hasRightPane = (windowWidth: number): boolean =>
   !isMobile() && windowWidth > RIGHT_PANE_MIN_WINDOW_WIDTH;
 
-const useHasRightPane = (): boolean => {
-  const has = hasRightPane(Dimensions.get('window').width);
-  const [, setHas] = useState(has);
+const useWindowWidthCheck = (check: (windowWidth: number) => boolean): boolean => {
+  const result = check(Dimensions.get('window').width);
+  const [, setResult] = useState(result);
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) =>
-      setHas(hasRightPane(window.width)));
+      setResult(check(window.width)));
     return () => subscription.remove();
-  }, []);
+  }, [check]);
 
-  return has;
+  return result;
 };
+
+const useHasRightPane = (): boolean => useWindowWidthCheck(hasRightPane);
 
 export {
   CONTENT_COLUMN_STYLE,
@@ -31,4 +33,5 @@ export {
   RIGHT_PANE_STYLE,
   hasRightPane,
   useHasRightPane,
+  useWindowWidthCheck,
 };

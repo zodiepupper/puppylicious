@@ -37,7 +37,11 @@ const PanelCheckChips = ({ input }: { input: OptionGroupCheckChips }) => {
     input.checkChips.values.flatMap((v) => v.checked ? [v.label] : [])));
 
   const onChange = async (label: string, isChecked: boolean) => {
-    isChecked ? checked.current.add(label) : checked.current.delete(label);
+    if (isChecked) {
+      checked.current.add(label);
+    } else {
+      checked.current.delete(label);
+    }
     setIsInvalid(!(await input.checkChips.submit([...checked.current])));
   };
 
@@ -180,8 +184,6 @@ const SearchFilterPanel = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const onPressAdvanced = useCallback(() => showSearchFilters(true), []);
-
   return (
     <SidePanelCard style={styles.card}>
       <SidePanelHeading isFirst={true}>Search filters</SidePanelHeading>
@@ -198,7 +200,7 @@ const SearchFilterPanel = () => {
         </ScrollView>
       }
       <Pressable
-        onPress={onPressAdvanced}
+        onPress={() => showSearchFilters(true)}
         style={[
           styles.advanced,
           { borderTopColor: appTheme.interactiveBorderColor },

@@ -613,28 +613,25 @@ const SearchScreen_ = ({navigation}: SearchScreenProps) => {
   }, []);
 
   // Changing a search filter or answering a Q&A question re-ranks these
-  // results, so refetch when the tab regains focus if they've gone stale since
-  // we last fetched.
+  // results, so refetch when they go stale while the tab is focused, or when it
+  // regains focus if they went stale while it wasn't.
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      (async () => {
+      const refreshIfStale = async () => {
         await flushSearchFilterWrites();
         if (active && consumeStaleSearchResults()) {
           onPressRefresh();
         }
-      })();
-      return () => { active = false; };
+      };
+      refreshIfStale();
+      const unlisten = listenStaleSearchResults(refreshIfStale);
+      return () => {
+        active = false;
+        unlisten();
+      };
     }, [onPressRefresh])
   );
-
-  useEffect(() => {
-    return listenStaleSearchResults(() => {
-      if (navigation.isFocused() && consumeStaleSearchResults()) {
-        onPressRefresh();
-      }
-    });
-  }, [navigation, onPressRefresh]);
 
   const onPressOptions = useCallback(() => {
     dismissFiltersHint();
