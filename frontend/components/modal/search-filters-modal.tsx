@@ -8,6 +8,8 @@ import {
 import { DefaultModal } from './default-modal';
 import { backgroundColors } from './background-colors';
 import { SearchFilterScreen } from '../search-filter-screen';
+import { ButtonWithCenteredText } from '../button/centered-text';
+import { requestSearch } from '../../events/search-requests';
 import { listen, notify } from '../../events/events';
 import { useAppTheme } from '../../app-theme/app-theme';
 
@@ -18,14 +20,54 @@ const showSearchFilters = (isVisible: boolean) =>
 
 const close = () => showSearchFilters(false);
 
+const search = () => {
+  requestSearch();
+  close();
+};
+
 const onUnhandledAction = (action: NavigationAction) => {
   if (action.type === 'GO_BACK') {
     close();
   }
 };
 
-const SearchFiltersModal = () => {
+const SearchFiltersCard = () => {
   const { appTheme } = useAppTheme();
+  const [isAtFilterList, setIsAtFilterList] = useState(true);
+
+  return (
+    <View style={[styles.card, { backgroundColor: appTheme.primaryColor }]}>
+      <View style={styles.navigator}>
+        <NavigationIndependentTree>
+          <NavigationContainer
+            documentTitle={{ enabled: false }}
+            onUnhandledAction={onUnhandledAction}
+            onStateChange={(state) => setIsAtFilterList(state?.index === 0)}
+          >
+            <SearchFilterScreen />
+          </NavigationContainer>
+        </NavigationIndependentTree>
+      </View>
+      {isAtFilterList &&
+        <View
+          style={[
+            styles.footer,
+            { borderTopColor: appTheme.interactiveBorderColor },
+          ]}
+        >
+          <ButtonWithCenteredText
+            onPress={search}
+            containerStyle={styles.searchButton}
+          >
+            Search
+          </ButtonWithCenteredText>
+        </View>
+      }
+    </View>
+  );
+};
+
+const SearchFiltersModal = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -39,18 +81,7 @@ const SearchFiltersModal = () => {
       onRequestClose={close}
     >
       <View style={[styles.backdrop, backgroundColors.dark]}>
-        <View
-          style={[styles.card, { backgroundColor: appTheme.primaryColor }]}
-        >
-          <NavigationIndependentTree>
-            <NavigationContainer
-              documentTitle={{ enabled: false }}
-              onUnhandledAction={onUnhandledAction}
-            >
-              <SearchFilterScreen />
-            </NavigationContainer>
-          </NavigationIndependentTree>
-        </View>
+        <SearchFiltersCard />
       </View>
     </DefaultModal>
   );
@@ -72,6 +103,18 @@ const styles = StyleSheet.create({
     maxHeight: 900,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  navigator: {
+    flex: 1,
+  },
+  footer: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+  },
+  searchButton: {
+    width: '100%',
+    maxWidth: 400,
   },
 });
 

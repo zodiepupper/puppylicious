@@ -831,6 +831,7 @@ const styles = StyleSheet.create({
 
 export {
   SearchFilterScreen,
+  getCurrentValueAsLabel,
   optionGroupToDataKey,
   withCurrentValue,
 }

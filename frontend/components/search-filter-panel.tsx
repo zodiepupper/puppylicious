@@ -7,6 +7,7 @@ import { RangeSlider } from './range-slider';
 import { LabelledSlider } from './labelled-slider';
 import { Toggle } from './toggle';
 import { LogoActivityIndicator } from './logo/logo-activity-indicator';
+import { ButtonWithCenteredText } from './button/centered-text';
 import { SidePanelCard, SidePanelHeading } from './navigation/side-panel';
 import { useAppTheme } from '../app-theme/app-theme';
 import { api } from '../api/api';
@@ -28,8 +29,15 @@ import {
   isOptionGroupSlider,
   searchBasicsOptionGroups,
 } from '../data/option-groups';
-import { optionGroupToDataKey, withCurrentValue } from './search-filter-screen';
+import {
+  getCurrentValueAsLabel,
+  optionGroupToDataKey,
+  withCurrentValue,
+} from './search-filter-screen';
 import { showSearchFilters } from './modal/search-filters-modal';
+import { requestSearch } from '../events/search-requests';
+
+const collapsedTitles = new Set<string>();
 
 const PanelCheckChips = ({ input }: { input: OptionGroupCheckChips }) => {
   const [isInvalid, setIsInvalid] = useState(false);
@@ -51,6 +59,7 @@ const PanelCheckChips = ({ input }: { input: OptionGroupCheckChips }) => {
         {input.checkChips.values.map((v) =>
           <CheckChip
             key={v.label}
+            compact={true}
             label={v.label}
             initialCheckedState={v.checked}
             onChange={(isChecked) => onChange(v.label, isChecked)}
@@ -90,6 +99,7 @@ const PanelRangeSlider = ({ input }: { input: OptionGroupRangeSlider }) => {
       onSlidingComplete={submit}
       valueRewriter={input.rangeSlider.valueRewriter}
       scale={input.rangeSlider.scale}
+      containerStyle={styles.rangeSlider}
     />
   );
 };
@@ -152,18 +162,41 @@ const PanelFilter = ({ og, data }: {
 }) => {
   const { appTheme } = useAppTheme();
   const [signedInUser] = useSignedInUser();
-  const { title, Icon, input } = withCurrentValue(og, data, signedInUser);
+  const [isOpen, setIsOpen] = useState(!collapsedTitles.has(og.title));
+  const current = withCurrentValue(og, data, signedInUser);
+  const { title, Icon, input } = current;
+
+  const toggle = () => {
+    if (isOpen) {
+      collapsedTitles.add(title);
+    } else {
+      collapsedTitles.delete(title);
+    }
+    setIsOpen(!isOpen);
+  };
 
   return (
     <View style={styles.filter}>
-      <View style={styles.filterTitle}>
+      <Pressable style={styles.filterTitle} onPress={toggle}>
         {Icon && <Icon color={appTheme.secondaryColor} />}
         <DefaultText style={styles.filterTitleText}>{title}</DefaultText>
-      </View>
-      <PanelInput
-        key={JSON.stringify(data[optionGroupToDataKey(og)])}
-        input={input}
-      />
+        <DefaultText
+          numberOfLines={1}
+          style={[styles.summary, { color: appTheme.hintColor }]}
+        >
+          {!isOpen && (getCurrentValueAsLabel(current, signedInUser) ?? 'Any')}
+        </DefaultText>
+        <Ionicons
+          style={{ fontSize: 18, color: appTheme.hintColor }}
+          name={isOpen ? 'chevron-up' : 'chevron-down'}
+        />
+      </Pressable>
+      {isOpen &&
+        <PanelInput
+          key={JSON.stringify(data[optionGroupToDataKey(og)])}
+          input={input}
+        />
+      }
     </View>
   );
 };
@@ -199,25 +232,31 @@ const SearchFilterPanel = () => {
           )}
         </ScrollView>
       }
-      <Pressable
-        onPress={() => showSearchFilters(true)}
+      <View
         style={[
-          styles.advanced,
+          styles.footer,
           { borderTopColor: appTheme.interactiveBorderColor },
         ]}
       >
-        <Ionicons
-          style={{ fontSize: 16, color: appTheme.secondaryColor }}
-          name="options-outline"
-        />
-        <DefaultText style={styles.advancedText}>
-          Advanced filters
-        </DefaultText>
-        <Ionicons
-          style={{ fontSize: 20, color: appTheme.secondaryColor }}
-          name="chevron-forward"
-        />
-      </Pressable>
+        <Pressable
+          onPress={() => showSearchFilters(true)}
+          style={styles.advanced}
+        >
+          <Ionicons
+            style={{ fontSize: 16, color: appTheme.secondaryColor }}
+            name="options-outline"
+          />
+          <DefaultText style={styles.advancedText}>
+            Advanced filters
+          </DefaultText>
+        </Pressable>
+        <ButtonWithCenteredText
+          onPress={requestSearch}
+          containerStyle={styles.searchButton}
+        >
+          Search
+        </ButtonWithCenteredText>
+      </View>
     </SidePanelCard>
   );
 };
@@ -232,44 +271,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    padding: 16,
-    paddingTop: 8,
-    gap: 24,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+    gap: 12,
   },
   filter: {
-    gap: 8,
+    gap: 4,
   },
   filterTitle: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 2,
   },
   filterTitleText: {
     fontSize: 16,
     fontWeight: '700',
   },
+  summary: {
+    flex: 1,
+    textAlign: 'right',
+  },
+  rangeSlider: {
+    gap: 0,
+  },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
     marginHorizontal: 10,
   },
   invalid: {
     textAlign: 'center',
     color: 'red',
   },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+  },
   advanced: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    padding: 16,
-    borderTopWidth: 1,
   },
   advancedText: {
-    flex: 1,
-    fontSize: 16,
     fontWeight: '700',
+  },
+  searchButton: {
+    flex: 1,
+    maxWidth: 140,
+    height: 44,
   },
 });
 

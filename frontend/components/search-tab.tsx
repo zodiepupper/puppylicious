@@ -45,10 +45,8 @@ import { onPressInvite } from '../components/invite';
 import { useAppTheme } from '../app-theme/app-theme';
 import { useIsWebLoggedOut } from '../events/signed-in-user';
 import { encodedAnonymousAnswers } from '../events/anonymous-answers';
-import {
-  consumeStaleSearchResults,
-  listenStaleSearchResults,
-} from '../events/stale-search-results';
+import { consumeStaleSearchResults } from '../events/stale-search-results';
+import { listenSearchRequests } from '../events/search-requests';
 import { flushSearchFilterWrites } from '../events/search-filters';
 import { SearchFiltersHint } from './hints/search-filters-hint';
 import { seenSearchFiltersHint } from '../kv-storage/seen-hints/seen-search-filters-hint';
@@ -613,25 +611,28 @@ const SearchScreen_ = ({navigation}: SearchScreenProps) => {
   }, []);
 
   // Changing a search filter or answering a Q&A question re-ranks these
-  // results, so refetch when they go stale while the tab is focused, or when it
-  // regains focus if they went stale while it wasn't.
+  // results, so refetch when the tab regains focus if they've gone stale since
+  // we last fetched.
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      const refreshIfStale = async () => {
+      (async () => {
         await flushSearchFilterWrites();
         if (active && consumeStaleSearchResults()) {
           onPressRefresh();
         }
-      };
-      refreshIfStale();
-      const unlisten = listenStaleSearchResults(refreshIfStale);
-      return () => {
-        active = false;
-        unlisten();
-      };
+      })();
+      return () => { active = false; };
     }, [onPressRefresh])
   );
+
+  useEffect(() => {
+    return listenSearchRequests(async () => {
+      await flushSearchFilterWrites();
+      consumeStaleSearchResults();
+      onPressRefresh();
+    });
+  }, [onPressRefresh]);
 
   const onPressOptions = useCallback(() => {
     dismissFiltersHint();
@@ -690,7 +691,7 @@ const SearchScreen_ = ({navigation}: SearchScreenProps) => {
   return (
     <View style={styles.safeAreaView} onLayout={onLayoutScreen}>
       <DuoliciousTopNavBar>
-        {Platform.OS === 'web' &&
+        {Platform.OS === 'web' && !hasFilterPanel &&
           <TopNavBarButton
             onPress={onPressRefresh}
             iconName="refresh"
